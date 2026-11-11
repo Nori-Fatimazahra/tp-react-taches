@@ -7,6 +7,20 @@ import Compteur from './components/Compteur.jsx'
 import { useState } from 'react'
 import Filtres from './components/Filtres.jsx'
 import Statistiques from './components/Statistiques.jsx'
+import Horloge from './components/Horloge.jsx'
+import { useState, useEffect } from 'react'
+
+useEffect(() => {
+  const restantes = taches.filter(
+    (tache) => !tache.terminee
+  ).length
+
+  document.title = `(${restantes}) Mes tâches`
+}, [taches])
+
+<Carte titre="Heure actuelle">
+  <Horloge />
+</Carte>
 
 <Carte titre="Statistiques">
   <Statistiques taches={taches} />
@@ -16,13 +30,12 @@ import Statistiques from './components/Statistiques.jsx'
   <Compteur />
 </Carte>
 
-const TACHES_INITIALES = [
-  { id: 1, titre: 'Installer Node.js et Vite', terminee: true },
-  { id: 2, titre: 'Comprendre les composants', terminee: true },
-  { id: 3, titre: 'Passer des données avec les props', terminee: false },
-  { id: 4, titre: 'Gérer l’état avec useState', terminee: false },
-]
-const [taches, setTaches] = useState(TACHES_INITIALES)
+ 
+const [taches, setTaches] = useState([])
+
+const [chargement, setChargement] = useState(true)
+
+const [erreur, setErreur] = useState(null)
 function basculerTache(id) {
   setTaches(
     taches.map((tache) =>
@@ -69,11 +82,24 @@ function App() {
 
       <Carte titre="Ma liste">
 
-  <Filtres
-    filtre={filtre}
-    onChanger={setFiltre}
-  />
+  {chargement ? (
+  <p className="vide">Chargement des tâches…</p>
+) : erreur ? (
+  <p className="erreur">{erreur}</p>
+) : (
+  <>
+    <Filtres
+      filtre={filtre}
+      onChanger={setFiltre}
+    />
 
+    <ListeTaches
+      taches={tachesVisibles}
+      onBasculer={basculerTache}
+      onSupprimer={supprimerTache}
+    />
+  </>
+)}
   <ListeTaches
     taches={tachesVisibles}
     onBasculer={basculerTache}
@@ -91,5 +117,30 @@ function App() {
     </div>
   )
 }
+useEffect(() => {
+  let annule = false
+
+  fetch('/taches.json')
+    .then((reponse) => {
+      if (!reponse.ok) {
+        throw new Error(`Erreur HTTP ${reponse.status}`)
+      }
+
+      return reponse.json()
+    })
+    .then((donnees) => {
+      if (!annule) setTaches(donnees)
+    })
+    .catch((err) => {
+      if (!annule) setErreur(err.message)
+    })
+    .finally(() => {
+      if (!annule) setChargement(false)
+    })
+
+  return () => {
+    annule = true
+  }
+}, [])
 
 export default App
